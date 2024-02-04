@@ -3,5 +3,13 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: [
     '@nuxtjs/tailwindcss',
-  ]
+  ],
+  app: {
+    head: {
+      htmlAttrs: {
+        lang: 'ja',
+        "data-theme": "cupcake",
+      },
+    },
+  },
 })

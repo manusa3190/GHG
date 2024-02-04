@@ -1,14 +1,16 @@
 <script setup lang="ts">
-const {data} = await useFetch('/api/v1/boms')
+    const {data} = await useFetch('/api/v1/boms')
 
-const items = data.value
+    const items = data.value
 </script>
 
 <template>
     <div class=" w-full h-full p-4">
         <h1>テスト</h1>
 
-        
+        <ClientOnly>
+            <Chain :items="items"></Chain>            
+        </ClientOnly>
     </div>
 </template>
 
