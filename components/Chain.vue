@@ -1,34 +1,25 @@
 <script setup lang="ts">
 import { VueFlow,  MarkerType, Position, type Node, type Edge, useVueFlow } from '@vue-flow/core'
 
-const {items} = defineProps<{items:Material[]}>()
-
-const emits = defineEmits<{
-    (e:'selected',val:any):void
-}>()
-
-export interface CustomData {
-  hello: string
-}
-
-export interface CustomEvents {
-  onCustomEvent: (event: MouseEvent) => void
-}
+const {items} = defineProps<{items:Part[]}>()
 
 const nodes = reactive<Node[]>([])
 
 let previousSetNode:Node|null = null
 
-const level1s = items?.filter(item=>item.lineage.length===0)
+const level1s = items?.filter(item=>item.isRoot)
 
 level1s?.forEach(item=>setNode(item))
 
-function setNode(Item:Material){
-    const childItems = items!.filter(item=>item.lineage.at(-1)===Item['id'])
+function setNode(Item:Part){
+
+    const childItems = items!.filter(item=>item.parent===Item['id']).sort((a,b)=>a.order-b.order)
 
     if(childItems.length){
         childItems.forEach(childItem=>setNode(childItem))
     }
+
+    if(Item.material)return //materialが登録されている場合はnodeを表示させない
 
     const newNode:Node = {
         id:Item['id'],
@@ -36,9 +27,6 @@ function setNode(Item:Material){
         label:Item['name'],
         position:{x:200,y:0},
         data:Item,
-        events:{
-            'click':()=>useState<Material>('selectedMaterial').value=Item
-        },
         parentNode:Item.lineage.at(-1),
     }
 
@@ -61,6 +49,8 @@ function setNode(Item:Material){
         }
     }
 
+    if(Item.isRoot)newNode.position.y = 30
+
     nodes.push(newNode)
     
     previousSetNode = newNode
@@ -82,7 +72,7 @@ nodes.forEach((node,i)=>{
 </script>
 
 <template>
-    <div class=" w-full h-full">
+    <div class=" pl-20 pt-4 w-full h-full bg-white">
         <VueFlow :nodes="nodes" :edges="edges" :nodes-draggable="false" :default-viewport="{ zoom: 0.8 }" >
             <template #node-custom="nodeProps">
                 <Node :nodeProps="nodeProps"></Node>

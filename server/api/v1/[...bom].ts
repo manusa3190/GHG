@@ -1,6 +1,18 @@
-import { createRouter, defineEventHandler, useBase } from 'h3'
+import { createRouter, defineEventHandler, useBase, readBody } from 'h3'
 
-const materials = [
+const materials = {
+  niku:{
+    name:'ひき肉'
+  },
+  cabbage:{
+    name:'キャベツ'
+  },
+  flour:{
+    name:'小麦粉'
+  }
+}
+
+const parts = [
       {
         id:'1',
         lineage:[],
@@ -38,6 +50,14 @@ const materials = [
         name:'餃子皮',
         end:true
       },{
+        id:'1-1-1-1',
+        lineage:['1','1-1','1-1-1'],
+        order:1,
+        qty:10,
+        name:'小麦粉',
+        material:materials['flour'],
+        end:true
+      },{
         id:'1-1-2',
         lineage:['1','1-1'],
         order:2,
@@ -56,18 +76,28 @@ const materials = [
 
 const router = createRouter()
 
+router.get('/materials',defineEventHandler(()=>{
+  return materials
+}))
+
 router.get('/rootItems',defineEventHandler(()=>{
-  return materials.filter(m=>!m.lineage.length)
+  return parts.filter(m=>!m.lineage.length)
 }))
 
 router.get('/treeItems',defineEventHandler((event)=>{
   const {id}:{id:string} = getQuery(event)
-  return materials.filter(m=> m.lineage.includes(id) || m.id===id)
+  return parts.filter(m=> m.lineage.includes(id) || m.id===id)
 }))
 
-
-export const add = defineEventHandler((event)=>{
-
-})
+router.put('/item',defineEventHandler(async event=>{
+  const body = await readBody(event)
+  var parent:string;
+  body.forEach((part,i) => {
+    if(!i)parent = part.lineage.at(-1)
+    const index = parts.findIndex(p=>p['id']===part.id)
+    parts[index] = part
+  });
+  return parts.filter(m=> m.lineage.at(-1)===parent)
+}))
 
 export default useBase('/api/v1/bom', router.handler)

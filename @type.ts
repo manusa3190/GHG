@@ -1,3 +1,3 @@
-const {Material:MaterialClass} = useMaterial()
+const {Part:PartClass} = usePart()
 
-type Material = InstanceType<typeof MaterialClass>
+type Part = InstanceType<typeof PartClass>
