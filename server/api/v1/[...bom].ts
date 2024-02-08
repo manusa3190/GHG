@@ -1,4 +1,6 @@
-  const materials = [
+import { createRouter, defineEventHandler, useBase } from 'h3'
+
+const materials = [
       {
         id:'1',
         lineage:[],
@@ -52,14 +54,20 @@
       }
     ]
 
-export default defineEventHandler((event) => {
-  const {id, level} =  getQuery(event)
-  
-  if(id){
-    return materials.find(m=>m['id']===id)
-  }else if(level){
-    return materials.filter(m=>!m.lineage.length)
-  }else{
-    return materials
-  }
+const router = createRouter()
+
+router.get('/rootItems',defineEventHandler(()=>{
+  return materials.filter(m=>!m.lineage.length)
+}))
+
+router.get('/treeItems',defineEventHandler((event)=>{
+  const {id}:{id:string} = getQuery(event)
+  return materials.filter(m=> m.lineage.includes(id) || m.id===id)
+}))
+
+
+export const add = defineEventHandler((event)=>{
+
 })
+
+export default useBase('/api/v1/bom', router.handler)

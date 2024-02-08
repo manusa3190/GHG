@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { VueFlow,  MarkerType, Position, type Node, type Edge, useVueFlow } from '@vue-flow/core'
 
-const {items} = defineProps<{items}>()
+const {items} = defineProps<{items:Material[]}>()
 
 const emits = defineEmits<{
-    (e:'selected',val:string):void
+    (e:'selected',val:any):void
 }>()
 
 export interface CustomData {
@@ -23,7 +23,7 @@ const level1s = items?.filter(item=>item.lineage.length===0)
 
 level1s?.forEach(item=>setNode(item))
 
-function setNode(Item){
+function setNode(Item:Material){
     const childItems = items!.filter(item=>item.lineage.at(-1)===Item['id'])
 
     if(childItems.length){
@@ -32,22 +32,19 @@ function setNode(Item){
 
     const newNode:Node = {
         id:Item['id'],
-        type:(()=>{
-            // if(!Item.lineage.length)return 'input'
-            // if(Item['end'])return 'output'
-            return 'custom'
-        })(),
+        type:'custom',
         label:Item['name'],
-        // sourcePosition: Position.Right,
-        // targetPosition: Position.Left,
         position:{x:200,y:0},
         data:Item,
+        events:{
+            'click':()=>useState<Material>('selectedMaterial').value=Item
+        },
         parentNode:Item.lineage.at(-1),
     }
 
     // y座標を決める。
     if(previousSetNode){
-        switch(Item.lineage.length-previousSetNode.data.lineage.length){
+        switch(Item.lineage.length - previousSetNode.data.lineage.length){
             case 1: // 右側に移動した直後のノードの場合
                 newNode.position.y = previousSetNode.position.y + 60
                 break;
@@ -58,7 +55,6 @@ function setNode(Item){
                 break;
             case 0: // 同じ階層で、下にノードを追加する場合
                 const nodes_copy = nodes.map(n=>n).sort((a,b)=>a.position.y-b.position.y)
-                console.log(nodes_copy)
                 const theBottomNode = nodes_copy.at(-1)
                 newNode.position.y = theBottomNode!.position.y + 60
                 break
@@ -83,11 +79,6 @@ nodes.forEach((node,i)=>{
         })        
     })
 })
-
-
-const {onNodeClick} = useVueFlow()
-
-onNodeClick(({node})=>emits('selected',node.id))
 </script>
 
 <template>
