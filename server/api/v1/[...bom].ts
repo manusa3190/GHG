@@ -1,8 +1,21 @@
 import { createRouter, defineEventHandler, useBase, readBody } from 'h3'
+import { v4 as uuidv4 } from 'uuid';
 
 const materials = {
-  niku:{
-    name:'ひき肉'
+  paper:{
+    name:'紙'
+  },
+  pp:{
+    name:'PP'
+  },
+  pe:{
+    name:'PE'
+  },
+  pet:{
+    name:'PET'
+  },
+  pork:{
+    name:'豚肉'
   },
   cabbage:{
     name:'キャベツ'
@@ -12,92 +25,93 @@ const materials = {
   }
 }
 
-const parts = [
-      {
-        id:'1',
+const parts = {
+      '1':{
         lineage:[],
         order:1,
         qty:1,
-        name:'ギョーザ',
-        end:false
-      },{
-        id:'1-1',
+        name:'ギョーザ',        
+      },
+      '1-1':{
         lineage:['1'],
         order:1,
         qty:12,
         name:'餃子バルク',
-        end:false
-      },{
-        id:'1-2',
+      },
+      '1-2':{
         lineage:['1'],
         order:2,
         qty:1,
         name:'透明トレイ',
-        end:true
-      },{
-        id:'1-3',
+      },
+      '1-3':{
         lineage:['1'],
         level:2,
         order:3,
         qty:1,
         name:'ギョーザ 袋',
-        end:true
-      },{
-        id:'1-1-1',
+      },
+      '1-1-1':{
         lineage:['1','1-1'],
         order:1,
         qty:1,
         name:'餃子皮',
-        end:true
-      },{
-        id:'1-1-1-1',
+      },
+      '1-1-1-1':{
         lineage:['1','1-1','1-1-1'],
         order:1,
         qty:10,
         name:'小麦粉',
         material:materials['flour'],
-        end:true
-      },{
-        id:'1-1-2',
+      },
+      '1-1-2':{
         lineage:['1','1-1'],
         order:2,
         qty:20,
         name:'餃子餡',
-        end:true
-      },{
-        id:'2',
+      },
+      '2':{
         lineage:[],
         order:2,
         qty:1,
         name:'チャーハン',
-        end:true
       }
-    ]
+    }
 
 const router = createRouter()
 
-router.get('/materials',defineEventHandler(()=>{
-  return materials
-}))
-
 router.get('/rootItems',defineEventHandler(()=>{
-  return parts.filter(m=>!m.lineage.length)
+  return Object.entries(parts)
+    .filter(([key,data])=>!data.lineage.length)
+    .map(([key,data])=>({...data,id:key}))
 }))
 
 router.get('/treeItems',defineEventHandler((event)=>{
   const {id}:{id:string} = getQuery(event)
-  return parts.filter(m=> m.lineage.includes(id) || m.id===id)
+  return Object.entries(parts)
+  .filter(([key,data])=>data.lineage.includes(id) || key===id)
+  .map(([key,data])=>({...data,id:key}))
+}))
+
+router.get('/materialItems',defineEventHandler(()=>{
+  return Object.entries(materials).map(([key,data])=>({...data,id:key}))
 }))
 
 router.put('/item',defineEventHandler(async event=>{
   const body = await readBody(event)
-  var parent:string;
+
   body.forEach((part,i) => {
-    if(!i)parent = part.lineage.at(-1)
-    const index = parts.findIndex(p=>p['id']===part.id)
-    parts[index] = part
+    const {id}:{id:string} = part
+    if(id.startsWith('new')){
+      delete part.id
+      parts[uuidv4()] = part
+    }else{
+      parts[id] = part
+    }
   });
-  return parts.filter(m=> m.lineage.at(-1)===parent)
+  console.log(body)
+
+  return body
 }))
 
 export default useBase('/api/v1/bom', router.handler)

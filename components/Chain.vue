@@ -15,11 +15,9 @@ function setNode(Item:Part){
 
     const childItems = items!.filter(item=>item.parent===Item['id']).sort((a,b)=>a.order-b.order)
 
-    if(childItems.length){
+    if(childItems.length && !Item.isEnd){
         childItems.forEach(childItem=>setNode(childItem))
     }
-
-    if(Item.material)return //materialが登録されている場合はnodeを表示させない
 
     const newNode:Node = {
         id:Item['id'],
@@ -27,7 +25,7 @@ function setNode(Item:Part){
         label:Item['name'],
         position:{x:200,y:0},
         data:Item,
-        parentNode:Item.lineage.at(-1),
+        parentNode:Item.parent,
     }
 
     // y座標を決める。
@@ -37,7 +35,7 @@ function setNode(Item:Part){
                 newNode.position.y = previousSetNode.position.y + 60
                 break;
             case -1: // 左側に移動した直後のノードの場合
-                const childNodes = nodes.filter(node=>node.data.lineage.at(-1)===Item['id'])
+                const childNodes = nodes.filter(node=>node.data.parent===Item['id'])
                 const firstChildNode = childNodes[0]
                 newNode.position.y = firstChildNode.position.y
                 break;

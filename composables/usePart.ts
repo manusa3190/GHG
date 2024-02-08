@@ -19,6 +19,11 @@ export default ()=>{
         get parent(){
             return this.lineage.at(-1)
         }
+
+        get isEnd(){
+            const children = parts.value.filter(p=>p.parent===this.id)
+            return children.every(c=>c.material)
+        }
     }
 
     const parts = useState<InstanceType<typeof Part>[]>('parts',()=>[])

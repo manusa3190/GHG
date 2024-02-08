@@ -14,22 +14,25 @@ const selectNode =(node:NodeProps)=>{
 
 const addNode = async(dir:'child'|'sibling')=>{
   const part:Part = nodeProps.data
-  const newPart = new Part({id:'test'+parts.value.length})
+  const newPart = new Part({ id:'new'+parts.value.length})
 
   switch(dir){
     case 'child':
       newPart.lineage = [...part.lineage,part.id]
-      newPart.order = 1
-      // 既にある子たちのorderを一つづつ下げる
-      const children = parts.value.filter(p=>p.lineage.at(-1)===part.id)
-      children.forEach(c=>c.order=c.order+1)
+
+      const children = parts.value.filter(p=>p.parent===part.id)
+      newPart.order = children.length + 1
       break;
     case 'sibling':
       newPart.lineage = part.lineage
       newPart.order = part.order + 1
+
+      // 自分より下のpartはorderを一つ下げる
+      const younger = parts.value.filter(p=>p.parent===part.parent && p.order > part.order)
+      younger.forEach(p=>p.order=p.order+1)
       break;
   }
-
+  
   parts.value.push(newPart)
 }
 

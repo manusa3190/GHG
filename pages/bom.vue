@@ -2,16 +2,16 @@
 import { PencilSquareIcon } from "@heroicons/vue/24/outline";
 const {Part,parts, selectedPart} = usePart()
 
-var materialOptions = Object.entries(
-    (await useFetch('/api/v1/bom/materials')).data.value
-).map(([key,value])=>({id:key,...value}))
+const materialOptions = useState('materialOptions')
+materialOptions.value = (await useFetch('/api/v1/bom/materialItems')).data.value
 
 const {data} = await useFetch('/api/v1/bom/rootItems')
-const rootParts:Part[] = data.value.map(m=>new Part(m))
+
+const rootParts:Part[] = data.value.map(item=>new Part(item))
 
 const getPartsOfTheTree=async(id:string)=>{
-    const {data}= await useFetch('/api/v1/bom/treeItems',{params:{id:id}})
-    parts.value = data.value.map(m=>new Part(m))
+    const items = await $fetch('/api/v1/bom/treeItems',{params:{id:id}})
+    parts.value = items.map(item=>new Part(item))
 }
 
 const isModalOpen = ref(false)
@@ -19,9 +19,19 @@ const children = ref<Part[]>([])
 
 const unitOptions = ['kg','g','ml']
 
+const addChild=()=>{
+    const parent = selectedPart.value
+    const newPart = new Part({
+        id:'new'+parent.id+children.value.length,
+        lineage:[...parent.lineage,parent.id],
+        order:children.value.length+1
+    })
+    children.value.push(newPart)
+}
+
 const editChildren =()=>{
     children.value = JSON.parse(JSON.stringify(
-        parts.value.filter(p=>p.lineage.at(-1)===selectedPart.value.id)
+        parts.value.filter(p=>p.parent===selectedPart.value.id)
     ))
     isModalOpen.value = true
     // children.value = structuredClone(parts.value.filter(p=>p.lineage.at(-1)===selectedPart.value.id))
@@ -33,6 +43,7 @@ const updateChildren=async()=>{
         const index = parts.value.findIndex(p=>p['id']===p.id)
         parts.value[index] = p
     })
+    await getPartsOfTheTree(selectedPart.value.id)
     isModalOpen.value = false    
 }
 
@@ -79,7 +90,7 @@ const updateChildren=async()=>{
                         </button>
                     </div>
                     
-                    <table v-if="selectedPart.end" class="table table-sm">
+                    <table v-if="selectedPart.isEnd" class="table table-sm">
                         <tbody>
                             <tr v-for="c of parts.filter(p=>p.lineage.at(-1)===selectedPart.id)">
                                 <td>{{ c.name }}</td>
@@ -110,7 +121,7 @@ const updateChildren=async()=>{
                         <button class="btn btn-warning btn-xs" @click="children.splice(i,1)">削除</button>
                     </li>
 
-                    <button class="btn btn-primary btn-xs" @click="children.push(new Part())">追加</button>
+                    <button class="btn btn-primary btn-xs" @click="addChild()">追加</button>
                 </ul>
 
                 <div class="modal-action">
