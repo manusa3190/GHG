@@ -1,80 +1,88 @@
 <script setup lang="ts">
-import { PencilSquareIcon } from "@heroicons/vue/24/outline";
-const {Part,parts, selectedPart} = usePart()
+import { MagnifyingGlassIcon, PencilSquareIcon } from "@heroicons/vue/24/outline";
+const {Buhin,buhins, selectedBuhin} = useBuhin()
 
 const materialOptions = useState('materialOptions')
 materialOptions.value = (await useFetch('/api/v1/bom/materialItems')).data.value
 
 const {data} = await useFetch('/api/v1/bom/rootItems')
 
-const rootParts:Part[] = data.value.map(item=>new Part(item))
+const rootBuhins:Buhin[] = data.value.map(item=>new Buhin(item))
 
-const getPartsOfTheTree=async(id:string)=>{
-    const items = await $fetch('/api/v1/bom/treeItems',{params:{id:id}})
-    parts.value = items.map(item=>new Part(item))
+const getBuhinsOfTheTree=async(id:string)=>{
+    const items = await $fetch(`/api/v1/bom/${id}`)
+    buhins.value = items.map(item=>new Buhin(item))
 }
 
 const isModalOpen = ref(false)
-const children = ref<Part[]>([])
+const children = ref<Buhin[]>([])
 
 const unitOptions = ['kg','g','ml']
 
 const addChild=()=>{
-    const parent = selectedPart.value
-    const newPart = new Part({
+    const parent = selectedBuhin.value
+    const newBuhin = new Buhin({
         id:'new'+parent.id+children.value.length,
         lineage:[...parent.lineage,parent.id],
         order:children.value.length+1
     })
-    children.value.push(newPart)
+    children.value.push(newBuhin)
 }
 
 const editChildren =()=>{
     children.value = JSON.parse(JSON.stringify(
-        parts.value.filter(p=>p.parent===selectedPart.value.id)
+        buhins.value.filter(p=>p.parent===selectedBuhin.value.id)
     ))
     isModalOpen.value = true
-    // children.value = structuredClone(parts.value.filter(p=>p.lineage.at(-1)===selectedPart.value.id))
+    // children.value = structuredClone(buhins.value.filter(p=>p.lineage.at(-1)===selectedBuhin.value.id))
 }
 
 const updateChildren=async()=>{
-    const updatedParts = await $fetch('/api/v1/bom/item',{method:'put',body:children.value})
-    updatedParts.forEach(p=>{
-        const index = parts.value.findIndex(p=>p['id']===p.id)
-        parts.value[index] = p
+    const updatedBuhins = await $fetch('/api/v1/bom/item',{method:'put',body:children.value})
+    updatedBuhins.forEach(p=>{
+        const index = buhins.value.findIndex(p=>p['id']===p.id)
+        buhins.value[index] = p
     })
-    await getPartsOfTheTree(selectedPart.value.id)
+    await getBuhinsOfTheTree(selectedBuhin.value.id)
     isModalOpen.value = false    
+}
+
+const deleteBuhins=async()=>{
+    const {id} = selectedBuhin.value
+    await $fetch(`/api/v1/bom/${id}`,{method:'DELETE'})
+
+    const currentTreeBuhin = buhins.value.find(p=>!p.lineage.length)!
+    await getBuhinsOfTheTree(currentTreeBuhin.id)
 }
 
 </script>
 
 <template>
-    <div class=" w-full h-full py-4">
-        <h1>テスト</h1>
+    <div class=" w-full h-full ">
 
         <div class=" w-full h-full bg-orange-50 flex ">
-            <div class="absolute z-10 h-full bg-base-100 px-2 flex-none border-r-2">
-                <div>
-                    <input placeholder="ノードを検索">
+            <div class="absolute z-10 h-full bg-base-100 flex-none border-r-2">
+                <div class="flex p-2">
+                    <MagnifyingGlassIcon class="w-4"></MagnifyingGlassIcon>
+                    <input class=" input input-sm w-32" placeholder="ノードを検索">
                 </div>
 
                 <ul class="menu">
-                    <li v-for=" item of rootParts!.filter(item=>!item.lineage.length)">
-                        <div class=" text-lg font-bold truncate" @click="getPartsOfTheTree(item['id'])">{{ item['name'] }}</div>
+                    <li v-for=" item of rootBuhins!.filter(item=>!item.lineage.length)">
+                        <div class=" text-lg font-bold truncate" @click="getBuhinsOfTheTree(item['id'])">{{ item['name'] }}</div>
                     </li>
                 </ul>
             </div>
 
             <ClientOnly>
-                <Chain :key="parts.toString()" :items="parts" @selected="Part=$event"></Chain>            
+                <Chain :key="buhins.toString()" :items="buhins" @selected="Buhin=$event"></Chain>            
             </ClientOnly>
 
-            <div v-if="selectedPart"  class=" w-64 flex-none bg-base-100 border-l-2 px-2 space-y-6">
-                <div>{{ selectedPart.id }}:{{ selectedPart.order }}:{{ selectedPart.material }}</div>
+            <div v-if="selectedBuhin"  class=" flex flex-col w-64 flex-none bg-base-100 border-l-2 px-2 space-y-6">
+                <div>{{'id:'+selectedBuhin.id }}、{{'parent:'+ selectedBuhin.parent }}</div>
                 <div>
                     <h4>品名</h4>
-                    <div>{{ selectedPart.name }}</div>
+                    <input v-model="selectedBuhin.name">
                 </div>
 
                 <div>
@@ -90,15 +98,23 @@ const updateChildren=async()=>{
                         </button>
                     </div>
                     
-                    <table v-if="selectedPart.isEnd" class="table table-sm">
+                    <table v-if="selectedBuhin.isEnd" class="table table-sm">
                         <tbody>
-                            <tr v-for="c of parts.filter(p=>p.lineage.at(-1)===selectedPart.id)">
+                            <tr v-for="c of buhins.filter(p=>p.lineage.at(-1)===selectedBuhin.id)">
                                 <td>{{ c.name }}</td>
                                 <td>{{ c.qty }}</td>
                                 <td>マイクロg</td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <div class="flex-1"></div>
+
+                <div>
+
+                    <button class="btn btn-primary" @click="selectedBuhin=null">閉じる</button>
+                    <button class="btn btn-warning" @click="deleteBuhins">削除</button>
                 </div>
             </div>
         </div>

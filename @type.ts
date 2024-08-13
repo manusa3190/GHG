@@ -1,3 +1,3 @@
-const {Part:PartClass} = usePart()
+const {Buhin:BuhinClass} = useBuhin()
 
-type Part = InstanceType<typeof PartClass>
+type Buhin = InstanceType<typeof BuhinClass>

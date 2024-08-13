@@ -1,38 +1,52 @@
 <script setup lang="ts">
 import { VueFlow,  MarkerType, Position, type Node, type Edge, useVueFlow } from '@vue-flow/core'
 
-const {items} = defineProps<{items:Part[]}>()
+const {items} = defineProps<{items:Buhin[]}>()
 
 const nodes = reactive<Node[]>([])
 
+let count = 0
 let previousSetNode:Node|null = null
 
-const level1s = items?.filter(item=>item.isRoot)
+const alreadySetNode = new Set()
+
+const level1s = items?.filter(item=>item.isTop)
 
 level1s?.forEach(item=>setNode(item))
 
-function setNode(Item:Part){
+function setNode(Item:Buhin){
+    console.log(Item['id'],Item['componentId'])
 
-    const childItems = items!.filter(item=>item.parent===Item['id']).sort((a,b)=>a.order-b.order)
+    const childItems = items!.filter(item=>item.parent===Item['id'])
 
-    if(childItems.length && !Item.isEnd){
+    if(childItems.length && !Item['componentId']){
         childItems.forEach(childItem=>setNode(childItem))
     }
+    
+    if(Item['componentId']){
+        const componentItem = items.find(item=>item.id===Item['componentId'])
+        setNode(componentItem!)
+    }
+
+    if(alreadySetNode.has(Item.id))return
 
     const newNode:Node = {
         id:Item['id'],
         type:'custom',
         label:Item['name'],
-        position:{x:200,y:0},
+        position:{x:210,y:0},
         data:Item,
         parentNode:Item.parent,
     }
+
+    count +=1 ;
+    console.log(count,previousSetNode? previousSetNode.data.id:'none', Item.id)
 
     // y座標を決める。
     if(previousSetNode){
         switch(Item.lineage.length - previousSetNode.data.lineage.length){
             case 1: // 右側に移動した直後のノードの場合
-                newNode.position.y = previousSetNode.position.y + 60
+                newNode.position.y = previousSetNode.position.y
                 break;
             case -1: // 左側に移動した直後のノードの場合
                 const childNodes = nodes.filter(node=>node.data.parent===Item['id'])
@@ -49,9 +63,21 @@ function setNode(Item:Part){
 
     if(Item.isRoot)newNode.position.y = 30
 
+    if(Item.isComponentTop){
+        newNode.parentNode = items.find(item=>item.componentId===Item.id)!.id
+        newNode.position.x = 128
+        newNode.position.y = 0
+    }
+
+    if(items.find(item=>item.id===Item.parent)?.isComponentTop){
+        newNode.position.x=100
+    }
+
     nodes.push(newNode)
     
     previousSetNode = newNode
+
+    alreadySetNode.add(Item.id)
 }
 
 // エッジを作成
@@ -67,14 +93,34 @@ nodes.forEach((node,i)=>{
         })        
     })
 })
+
+const {panOnDrag, onNodeDrag, getIntersectingNodes, isNodeIntersecting, getNodes, onMoveEnd} = useVueFlow()
+
+// onNodeDrag(({ intersections }) => {
+//   const intersectionIds = intersections.map((intersection) => intersection.id)
+
+//   for (const node of getNodes.value) {
+//     const isIntersecting = intersectionIds.includes(node.id)
+
+//     // console.log(node.id, isIntersecting)
+//   }
+// })
+
+const zoom = ref(1)
+
+onMoveEnd(({event,flowTransform})=>{
+    console.log(flowTransform.zoom)
+    zoom.value = flowTransform.zoom
+})
+
 </script>
 
 <template>
     <div class=" pl-20 pt-4 w-full h-full bg-white">
-        <VueFlow :nodes="nodes" :edges="edges" :nodes-draggable="false" :default-viewport="{ zoom: 0.8 }" >
+        <VueFlow :nodes="nodes" :edges="edges" :nodes-draggable="true" >
             <template #node-custom="nodeProps">
                 <Node :nodeProps="nodeProps"></Node>
             </template>
-        </VueFlow>                
+        </VueFlow>
     </div>
 </template>
